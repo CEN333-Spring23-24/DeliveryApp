@@ -9,10 +9,12 @@ import { MAhaComponent } from '../../m-framework/m-aha/m-aha.component';
 declare var google; // Forward Declaration 
 
 class Location{
+  timeStamp: string;
   lat: number;
   lon: number;
   constructor(lat: number, lon: number){
     this.lat = lat; this.lon = lon; 
+    this.timeStamp = new Date().toUTCString();
   }
 }
 class Toast{
@@ -54,6 +56,8 @@ export class DefineComponent{
   map: any;
   list: any[];
   toast: any; 
+  intervalId: number | undefined;
+  markers: any[];
   //----------------------------------------------------------------
   constructor(private firebaseService:FirebaseService){
     this.busNumber = 0; 
@@ -62,14 +66,27 @@ export class DefineComponent{
     this.counter = 0; 
     this.list = [];
     this.toast = new Toast("","","",100);
-    
+    this.intervalId = undefined;
+    this.markers = [];
   }
   //----------------------------------------------------------------
-  drawMarker(latitude: number, longitude: number){
+  drawMarker(latitude: number, longitude: number, label: string){
+    if(label != ""){
+    const marker = new google.maps.Marker({
+      map: this.map,
+      position: {lat: latitude, lng: longitude},
+      label: { color: '#000000', fontWeight: 'bold', fontSize: '14px', text: label }
+    });
+    this.markers.push(marker); 
+  }
+  else{
     const marker = new google.maps.Marker({
       map: this.map,
       position: {lat: latitude, lng: longitude},
     });
+    this.markers.push(marker); 
+  }
+  
   }
  //---------------------------------------------------------------- 
   drawCircle(latitude: number, longitude: number, radius: number, changable: boolean){
@@ -86,7 +103,7 @@ export class DefineComponent{
     this.map = map;
     this.map.addListener("click", (event:any) => {
       let location = event.latLng;
-      this.drawMarker(location.lat(),location.lng());
+      this.drawMarker(location.lat(),location.lng(),"");
       this.list.push(new Location(location.lat(),location.lng()));
     });
   }
@@ -112,14 +129,31 @@ export class DefineComponent{
         this.list = route.locations; 
         this.list.forEach(location=>{
           this.map.setCenter({lat:location.lat, lng:location.lon});
-          this.drawMarker(location.lat,location.lon)
+          this.drawMarker(location.lat,location.lon, this.calculateTimeDifference(location.timeStamp))
         });
+        if (this.intervalId !== undefined) {
+          clearInterval(this.intervalId);
+        }
+  
+        // Set up a new interval to update time differences every second
+        this.intervalId = window.setInterval(() => {
+          this.updateMarkers();
+        }, 1000);
       }
     });
     if(!routeFound)
       this.toast = new Toast("Route not found. Check the number.","error","Error",3000).show();
   }
- 
+  updateMarkers() {
+    this.markers.forEach((marker, index) => {
+      marker.setLabel({
+        color: '#000000',
+        fontWeight: 'bold',
+        fontSize: '14px',
+        text: this.calculateTimeDifference(this.list[index].timeStamp)
+      });
+    });
+  }
  //--------------------------------------------------------------
   async playRoute(){
     this.counter = 0; 
@@ -153,5 +187,18 @@ export class DefineComponent{
       this.toast = new Toast("Route not found. Check the number.","error","Error",3000).show();
     
   }
+
+  calculateTimeDifference(timestamp: string): string {
+    const inputDate = new Date(timestamp);
+    const currentDate = new Date();  
+    const differenceInMilliseconds = currentDate.getTime() - inputDate.getTime();  
+    const differenceInSeconds = Math.floor(differenceInMilliseconds / 1000);
+    const hours = Math.floor((differenceInSeconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((differenceInSeconds % 3600) / 60);
+    const seconds = Math.floor(differenceInSeconds % 60);
+  
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
   
 }

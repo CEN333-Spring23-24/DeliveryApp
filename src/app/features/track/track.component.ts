@@ -13,10 +13,12 @@ import { getDatabase, ref, set, get, update, remove, push, child, onValue } from
 declare var google; // Forward Declaration 
 
 class Location{
+  timeStamp: string;
   lat: number;
   lon: number;
   constructor(lat: number, lon: number){
     this.lat = lat; this.lon = lon; 
+    this.timeStamp = new Date().toUTCString();
   }
 }
 class Toast{
@@ -93,10 +95,12 @@ export class TrackComponent {
     onValue(ref(this.firebaseService.getFirebaseDatabase(), "/driverlocation"), (data) => {
       let lat = data.val().lat;
       let lon = data.val().lon; 
+      let timeStamp = data.val().timeStamp;
+      console.log(timeStamp)
       if(this.inFence(lat,lon,1000))
         this.toast = new Toast("Get Ready.","success","Info",5000).show();
       if(!this.busMarker) 
-        this.busMarker = this.drawMarkerWithIcon(lat, lon, icon );
+        this.busMarker = this.drawMarkerWithIcon(lat, lon, icon);
       else
         this.reDrawBusMarker(lat, lon);
     });
@@ -129,13 +133,14 @@ export class TrackComponent {
       position: {lat: latitude, lng: longitude},
     });
   }
+
   //----------------------------------------------------------------
   drawMarkerWithIcon(latitude: number, longitude: number, icon:any){
     return new google.maps.Marker({
       map: this.map,
       position: {lat: latitude, lng: longitude},
       icon: icon,
-      zIndex: 9999999
+      zIndex: 9999999,
     });
   }
   //----------------------------------------------------------------
